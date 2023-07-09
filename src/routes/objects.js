@@ -12,6 +12,7 @@ const { deviceValidationSchema } = require("../../app/validate");
 
 config();
 const tokenSecret = process.env.TOKEN_SECRET || "";
+//REGISTER DEVICES TO USER
 router.post("/devices/register", verifyToken, async (req, res) => {
   const userId = req.query.userId;
   const deviceId = req.query.deviceId;
@@ -118,7 +119,38 @@ router.put("/devices/update-name", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+//UPDATE DEVICE'S STATUS
+router.put("/devices/update-status", verifyToken, async (req, res) => {
+  const deviceId = req.query.deviceId;
 
+  try {
+    // Find the device by deviceId
+    const device = await Device.findOne({ deviceId });
+
+    if (!device) {
+      res.status(404).json({ error: "Device not found" });
+      return;
+    }
+
+    // Toggle the device status
+    device.status = device.status === "active" ? "inactive" : "active";
+
+    // Turn off all channel values if status is set to inactive
+    if (device.status === "inactive") {
+      device.channels.forEach((channel) => {
+        channel.status = false;
+      });
+    }
+
+    // Save the updated device to the database
+    await device.save();
+
+    res.json({ message: "Device status updated successfully" });
+  } catch (error) {
+    console.error("Error updating device status:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 //DELETE and UNREGISTER DEVICE FROM USER
 router.delete("/devices/unregister", verifyToken, async (req, res) => {
   const deviceId = req.query.deviceId;
@@ -334,6 +366,26 @@ router.put("/devices/update-channel-name", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+//DEVICE STATUS CRON JOB CHECKER
+router.get("/devices/check-activation", async (req, res) => {
+  const deviceId = req.query.deviceId;
+
+  try {
+    // Check if the device exists and is active
+    const device = await Device.findOne({ deviceId, status: "active" });
+
+    if (!device) {
+      // Device not found or not active
+      return res.json({ activated: false });
+    }
+
+    // Device is active
+    return res.json({ activated: true });
+  } catch (error) {
+    console.error("Error checking device activation:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 router.get("/devices/filter", async (req, res) => {
   try {
@@ -416,38 +468,6 @@ router.post("/devices/initialize", async (req, res) => {
     }
   } catch (error) {
     console.error("Error registering device:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-router.put("/devices/:deviceId/status", verify, async (req, res) => {
-  const deviceId = req.params.deviceId;
-
-  try {
-    // Find the device by deviceId
-    const device = await Device.findOne({ deviceId });
-
-    if (!device) {
-      res.status(404).json({ error: "Device not found" });
-      return;
-    }
-
-    // Update the device status
-    device.status = "inactive";
-
-    // Turn off all channel values if status is set to inactive
-    if (device.status === "inactive") {
-      device.channels.forEach((channel) => {
-        channel.status = false;
-      });
-    }
-
-    // Save the updated device to the database
-    await device.save();
-
-    res.json({ message: "Device status updated successfully" });
-  } catch (error) {
-    console.error("Error updating device status:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
