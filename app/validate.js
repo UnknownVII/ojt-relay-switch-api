@@ -1,16 +1,19 @@
-const Joi = require('@hapi/joi');
+const Joi = require("@hapi/joi");
 
 //OBJECT VALIDATION
-const objectValidation = (data) => {
-    const schema = Joi.object({
-        first_name: Joi.string()
-            .min(3)
-            .required(),
-        last_name: Joi.string()
-            .min(3)
-            .required(),
-    });
-    return schema.validate(data);
-}
+const deviceValidationSchema = (data) => {
+  const schema = Joi.object({
+    deviceId: Joi.string()
+      .pattern(
+        new RegExp(
+          "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[4][a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
+        )
+      )
+      .required(),
+    name: Joi.string().required(),
+    token: Joi.string().required(),
+  });
 
-module.exports.objectValidation = objectValidation;
+  return schema.validate(data);
+};
+module.exports.deviceValidationSchema = deviceValidationSchema;
