@@ -18,10 +18,6 @@ const deviceSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  token: {
-    type: String,
-    required: true,
-  },
   status: {
     type: String,
     enum: ["active", "inactive"],

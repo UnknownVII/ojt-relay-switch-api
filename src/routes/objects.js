@@ -1,22 +1,18 @@
 const router = require("express").Router();
 const Device = require("../../models/device");
 const User = require("../../models/user");
-const verify = require("../../app/verify-device");
 const verifyToken = require("../../app/verify-token");
-
-const jwt = require("jsonwebtoken");
-
-const { config } = require("dotenv");
-
 const { deviceValidationSchema } = require("../../app/validate");
+const validateHmac = require("../../utils/global-hmac");
+const validateApiKey = require("../../utils/global-validate-api-key");
 
-config();
-const tokenSecret = process.env.TOKEN_SECRET || "";
 //REGISTER DEVICES TO USER
 router.post("/devices/register", verifyToken, async (req, res) => {
   const userId = req.query.userId;
   const deviceId = req.query.deviceId;
   const token = req.headers.auth_token;
+  const { error } = deviceValidationSchema({ deviceId });
+  if (error) return res.status(400).json({ error: error.details[0].message });
   try {
     // Find the user by their ID
     const user = await User.findById(userId);
@@ -87,7 +83,7 @@ router.get("/devices", verifyToken, async (req, res) => {
   }
 });
 //UPDATE DEVICE'S NAME
-router.put("/devices/update-name", async (req, res) => {
+router.put("/devices/update-name", verifyToken, async (req, res) => {
   const deviceId = req.query.deviceId;
   const newName = req.body.newName;
 
@@ -320,7 +316,7 @@ router.put("/devices/channels", verifyToken, async (req, res) => {
   }
 });
 //UPDATE CHANNEL NAME
-router.put("/devices/update-channel-name", async (req, res) => {
+router.put("/devices/update-channel-name", verifyToken, async (req, res) => {
   const channelId = req.query.channelId;
   const newName = req.body.newName;
 
@@ -366,200 +362,31 @@ router.put("/devices/update-channel-name", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 //DEVICE STATUS CRON JOB CHECKER
-router.get("/devices/check-activation", async (req, res) => {
-  const deviceId = req.query.deviceId;
+router.get(
+  "/devices/check-activation",
+  validateApiKey,
+  validateHmac,
+  async (req, res) => {
+    const deviceId = req.query.deviceId;
 
-  try {
-    // Check if the device exists and is active
-    const device = await Device.findOne({ deviceId, status: "active" });
+    try {
+      // Check if the device exists and is active
+      const device = await Device.findOne({ deviceId, status: "active" });
 
-    if (!device) {
-      // Device not found or not active
-      return res.json({ activated: false });
-    }
-
-    // Device is active
-    return res.json({ activated: true });
-  } catch (error) {
-    console.error("Error checking device activation:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-router.get("/devices/filter", async (req, res) => {
-  try {
-    const { userId } = req.query;
-
-    // Check if userId is provided
-    if (!userId) {
-      return res.status(400).json({ error: "User ID is required" });
-    }
-
-    // Find the user by userId
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    // Find devices belonging to the user
-    const devices = await Device.find({ user: user._id });
-
-    res.json(devices);
-    console.error("[Device]", "Get filtered devices");
-  } catch (error) {
-    console.error("Error retrieving devices:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-router.post("/devices/initialize", async (req, res) => {
-  const { deviceId } = req.body;
-  try {
-    // Check if the device already exists
-    const existingDevice = await Device.findOne({ deviceId });
-
-    if (existingDevice) {
-      // Device already registered, return the existing token
-      res.json({
-        deviceId: existingDevice.deviceId,
-        token: existingDevice.token,
-        name: existingDevice.name,
-      });
-
-      console.error("[Device  ]", "Successfully Retrieved");
-    } else {
-      // Generate a new token for the device
-      const token = jwt.sign({ deviceId }, tokenSecret);
-
-      let name;
-      let counter = 1;
-      let isNameUnique = false;
-      for (; !isNameUnique; counter++) {
-        name = `Device ${counter}`;
-
-        const deviceWithName = await Device.findOne({ name });
-
-        if (!deviceWithName) {
-          isNameUnique = true;
-        }
+      if (!device) {
+        // Device not found or not active
+        return res.json({ activated: false });
       }
-      // Save the new device to the database
-      //VALIDATION OF DATA
-      const { error } = deviceValidationSchema({
-        deviceId,
-        token,
-        name,
-      });
-      if (error)
-        return res.status(400).json({ error: error.details[0].message });
-      const newDevice = new Device({ deviceId, token, name });
-      await newDevice.save();
-      const deviceRes = await Device.findOne({ deviceId });
 
-      res.json({
-        deviceId: deviceRes.deviceId,
-        token: deviceRes.token,
-        name: deviceRes.name,
-      });
-
-      console.error("[Device  ]", "Successfully Added");
+      // Device is active
+      return res.json({ activated: true });
+    } catch (error) {
+      console.error("Error checking device activation:", error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
-  } catch (error) {
-    console.error("Error registering device:", error);
-    res.status(500).json({ error: "Internal Server Error" });
   }
-});
-
-router.put("/devices/:deviceId/status", verify, async (req, res) => {
-  const deviceId = req.params.deviceId;
-  const { status } = req.body;
-
-  try {
-    // Find the device by deviceId
-    const device = await Device.findOne({ deviceId });
-
-    if (!device) {
-      res.status(404).json({ error: "Device not found" });
-      return;
-    }
-
-    // Update the device status
-    device.status = status;
-
-    // If status is set to inactive, turn off all channel values
-    if (status === "inactive") {
-      device.channels.forEach((channel) => {
-        channel.status = false;
-      });
-    }
-
-    // Save the updated device to the database
-    await device.save();
-
-    res.json({ message: "Device status updated successfully" });
-  } catch (error) {
-    console.error("Error updating device status:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-router.get("/devices/:deviceId/channels", verify, async (req, res) => {
-  const deviceId = req.params.deviceId;
-
-  try {
-    // Find the device by deviceId
-    const device = await Device.findOne({ deviceId });
-
-    if (!device) {
-      res.status(404).json({ error: "Device not found" });
-      return;
-    }
-
-    // Extract the channels' information
-    const channels = {};
-    device.channels.forEach((channel) => {
-      channels[channel.name] = channel.status;
-    });
-
-    res.json({ channels });
-  } catch (error) {
-    console.error("Error retrieving channels:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-router.post("/devices/:deviceId/assign-user", async (req, res) => {
-  const deviceId = req.params.deviceId;
-  const { userId } = req.body;
-
-  try {
-    // Find the device by deviceId
-    const device = await Device.findOne({ deviceId });
-
-    if (!device) {
-      return res.status(404).json({ error: "Device not found" });
-    }
-
-    // Find the user by userId
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    // Assign the user to the device
-    device.user = user._id;
-
-    // Save the updated device
-    await device.save();
-
-    res.json({ message: "User assigned to device successfully" });
-  } catch (error) {
-    console.error("Error assigning user to device:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+);
 
 module.exports = router;

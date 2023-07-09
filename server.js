@@ -4,11 +4,6 @@ const dotenv = require('dotenv');
 var cors = require('cors')
 const verify = require('./app/verify-token');
 
-//API CACHE
-// const apicache = require('apicache');
-// let cache = apicache.middleware;
-// app.use(cache('5 minutes'));
-
 const port = process.env.PORT || 8080;
 
 //Import Routes
@@ -34,7 +29,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // simple route
-app.get("/", verify, (req, res) => {
+app.get("/", (req, res) => {
     res.json({ message: "HELLO WORLDOOO" });
 });
 
