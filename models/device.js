@@ -29,7 +29,6 @@ const deviceSchema = new mongoose.Schema({
   },
   name: {
     type: String,
-    unique: true,
   },
   channels: [channelSchema],
   createdAt: {

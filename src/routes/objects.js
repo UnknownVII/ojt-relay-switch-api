@@ -86,15 +86,19 @@ router.get("/devices", verifyToken, async (req, res) => {
 router.put("/devices/update-name", verifyToken, async (req, res) => {
   const deviceId = req.query.deviceId;
   const newName = req.body.newName;
+  const userId = req.query.userId; // Assuming the user ID is stored in the req.user.userId property
 
   try {
     if (!deviceId || !newName) {
       return res.status(400).json({ error: "Missing deviceId or newName" });
     }
 
-    // Check if the new name already exists for another device
-    const existingDevice = await Device.findOne({ name: newName });
-    if (existingDevice && existingDevice._id.toString() !== deviceId) {
+    const existingDevice = await Device.findOne({
+      name: newName,
+      user: userId,
+    });
+
+    if (existingDevice && existingDevice.name === newName) {
       return res.status(400).json({ error: "Device name already exists" });
     }
 
@@ -115,6 +119,7 @@ router.put("/devices/update-name", verifyToken, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 //UPDATE DEVICE'S STATUS
 router.put("/devices/update-status", verifyToken, async (req, res) => {
   const deviceId = req.query.deviceId;
