@@ -363,6 +363,7 @@ router.put("/devices/update-channel-name", verifyToken, async (req, res) => {
   }
 });
 
+//HMAC AUTHENTICATION AND API KEY AUTHENTICATION
 //DEVICE STATUS CRON JOB CHECKER
 router.get(
   "/devices/check-activation",
@@ -384,6 +385,29 @@ router.get(
       return res.json({ activated: true });
     } catch (error) {
       console.error("Error checking device activation:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+router.get(
+  "/devices/channels",
+  validateApiKey,
+  validateHmac,
+  async (req, res) => {
+    const deviceId = req.query.deviceId;
+
+    try {
+      // Find the device by deviceId
+      const device = await Device.findOne({ deviceId });
+
+      if (!device) {
+        return res.status(404).json({ error: "Device not found" });
+      }
+
+      // Return the channels of the device
+      res.json(device.channels);
+    } catch (error) {
+      console.error("Error retrieving channels:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   }
