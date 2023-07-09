@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 
 const jwt = require("jsonwebtoken");
 const User = require("../../models/user");
+const Device = require("../../models/device");
 const { config } = require("dotenv");
 config();
 const tokenSecret = process.env.TOKEN_SECRET || "";
@@ -31,11 +32,14 @@ router.post("/login", async (req, res) => {
     }
 
     // Generate a token
-    const token = jwt.sign({ userId: user._id },tokenSecret , {
+    const token = jwt.sign({ userId: user._id }, tokenSecret, {
       expiresIn: "1h",
     });
 
-    // Return the token
+    // Update the token for all user's devices
+    await Device.updateMany({ user: user._id }, { token });
+
+    // Return the token and user ID
     res.json({ token, _id: user._id });
   } catch (error) {
     console.error("Error during login:", error);
