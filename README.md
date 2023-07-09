@@ -36,6 +36,10 @@ DB_PASSWORD=<Database Password>
 PORT=8080
 # The "TOKEN_SECRET" is for JSONwebtoken and will be needed if a route requires an authorization token.
 TOKEN_SECRET=<Custom Token>
+# For app authentication
+API_SECRET=<Custom GUID>
+API_KEY=<Custom GUID>
+
 ````
 3. Start server locally
 ````ruby
