@@ -9,6 +9,7 @@ const port = process.env.PORT || 8080;
 //Import Routes
 const objectsRoute = require('./src/routes/objects');
 const usersRoute = require('./src/routes/user');
+const timeRoute = require('./src/routes/time');
 
 dotenv.config();
 
@@ -36,3 +37,5 @@ app.get("/", (req, res) => {
 //Route Middleware
 app.use('/api', objectsRoute);
 app.use('/api', usersRoute);
+app.use('/time', timeRoute);
+

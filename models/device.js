@@ -10,7 +10,19 @@ const channelSchema = new mongoose.Schema({
     required: true,
     default: false,
   },
+  timeout: {
+    time: {
+      type: String,
+      default: null,
+    },
+    date: {
+      type: String,
+      default: null,
+    },
+  },
 });
+
+
 
 const deviceSchema = new mongoose.Schema({
   deviceId: {

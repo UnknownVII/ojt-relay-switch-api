@@ -5,6 +5,7 @@ const verifyToken = require("../../app/verify-token");
 const { deviceValidationSchema } = require("../../app/validate");
 const validateHmac = require("../../utils/global-hmac");
 const validateApiKey = require("../../utils/global-validate-api-key");
+const moment = require("moment-timezone");
 
 //REGISTER DEVICES TO USER
 router.post("/devices/register", verifyToken, async (req, res) => {
@@ -417,5 +418,160 @@ router.get(
     }
   }
 );
+// SET TIMEOUT TO THAT CHANNEL
+router.post("/devices/channel-set-timeout", verifyToken, async (req, res) => {
+  const channelId = req.query.channelId;
+  const timeout = req.body.timeout;
+
+  try {
+    // Find the device that contains the channel
+    const device = await Device.findOne({ "channels._id": channelId });
+
+    if (!device) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    // Find the channel within the device's channels array
+    const channel = device.channels.find(
+      (ch) => ch._id.toString() === channelId
+    );
+
+    if (!channel) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
+
+    // Validate the timeout format
+    if (!isValidTimeoutFormat(timeout)) {
+      return res.status(400).json({
+        error: "Invalid timeout format. Please use HH:MM 24-hour time format.",
+      });
+    }
+
+    // Update the channel's timeout
+    channel.timeout.time = timeout;
+
+    // Save the updated device
+    await device.save();
+
+    res.json({ message: "Timeout set successfully" });
+  } catch (error) {
+    console.error("Error setting channel timeout:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// REMOVE TIMEOUT ON THAT CHANNEL
+router.put("/devices/channel-remove-timeout", verifyToken, async (req, res) => {
+  const channelId = req.query.channelId;
+
+  try {
+    // Find the device that contains the channel
+    const device = await Device.findOne({ "channels._id": channelId });
+
+    if (!device) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    // Find the channel within the device's channels array
+    const channel = device.channels.find(
+      (ch) => ch._id.toString() === channelId
+    );
+
+    if (!channel) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
+
+    // Remove the timeout value by setting it to null
+    channel.timeout.time = null;
+
+    // Save the updated device
+    await device.save();
+
+    res.json({ message: "Timeout removed successfully" });
+  } catch (error) {
+    console.error("Error removing channel timeout:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+//SET DATE TO THAT CHANNEL;
+router.post("/devices/channel-set-date", verifyToken, async (req, res) => {
+  const channelId = req.query.channelId;
+  const date = req.body.date;
+
+  try {
+    // Find the device that contains the channel
+    const device = await Device.findOne({ "channels._id": channelId });
+
+    if (!device) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    // Find the channel within the device's channels array
+    const channel = device.channels.find((ch) => ch._id.toString() === channelId);
+
+    if (!channel) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
+
+    // Validate the date format and year
+    const momentDate = moment(date, "MM/DD/YYYY", true);
+    if (!momentDate.isValid() || momentDate.year() < 2023) {
+      return res.status(400).json({ error: "Invalid date format or year. Please use MM/DD/YYYY format and ensure the year is 2023 or more." });
+    }
+
+    // Update the channel's date
+    channel.timeout.date = momentDate.format("MM/DD/YYYY");
+
+    // Save the updated device
+    await device.save();
+
+    res.json({ message: "Channel date set successfully" });
+  } catch (error) {
+    console.error("Error setting channel date:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+router.put("/devices/channel-remove-date", verifyToken, async (req, res) => {
+  const channelId = req.query.channelId;
+
+  try {
+    // Find the device that contains the channel
+    const device = await Device.findOne({ "channels._id": channelId });
+
+    if (!device) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    // Find the channel within the device's channels array
+    const channel = device.channels.find((ch) => ch._id.toString() === channelId);
+
+    if (!channel) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
+
+    // Remove the date value by setting it to null
+    channel.timeout.date = null;
+
+    // Save the updated device
+    await device.save();
+
+    res.json({ message: "Date removed successfully" });
+  } catch (error) {
+    console.error("Error removing channel date:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+
+// Function to validate the timeout format
+function isValidTimeoutFormat(timeout) {
+  // Regular expression to match HH:MM 24-hour time format
+  const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+  return regex.test(timeout);
+}
 
 module.exports = router;
