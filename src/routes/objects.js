@@ -575,6 +575,38 @@ router.put("/devices/channel-remove-date", verifyToken, async (req, res) => {
   }
 });
 
+router.put("/devices/update-timeout", async (req, res) => {
+  const channelId = req.query.channelId;
+
+  try {
+    // Find the device that contains the channel
+    const device = await Device.findOne({ "channels._id": channelId });
+
+    if (!device) {
+      return res.status(404).json({ error: "Device not found" });
+    }
+
+    // Find the channel within the device's channels array
+    const channel = device.channels.find(
+      (ch) => ch._id.toString() === channelId
+    );
+
+    if (!channel) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
+
+    // Remove the timeout value by setting it to null
+    channel.timeout.time = null;
+
+    // Save the updated device
+    await device.save();
+
+    res.json({ message: "Timeout removed successfully" });
+  } catch (error) {
+    console.error("Error removing channel timeout:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 router.put("/devices/update-date", async (req, res) => {
   const channelId = req.query.channelId;
 
