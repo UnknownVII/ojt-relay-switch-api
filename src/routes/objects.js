@@ -373,8 +373,8 @@ router.put("/devices/update-channel-name", verifyToken, async (req, res) => {
 //DEVICE STATUS CRON JOB CHECKER
 router.get(
   "/devices/check-activation",
-  validateApiKey,
-  validateHmac,
+  // validateApiKey,
+  // validateHmac,
   async (req, res) => {
     const deviceId = req.query.deviceId;
 
@@ -397,8 +397,8 @@ router.get(
 );
 router.get(
   "/devices/channels",
-  validateApiKey,
-  validateHmac,
+  // validateApiKey,
+  // validateHmac,
   async (req, res) => {
     const deviceId = req.query.deviceId;
 
