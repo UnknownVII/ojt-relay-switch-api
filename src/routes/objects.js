@@ -575,7 +575,7 @@ router.put("/devices/channel-remove-date", verifyToken, async (req, res) => {
   }
 });
 
-router.put("/devices/update-status", async (req, res) => {
+router.put("/devices/update-timeout", async (req, res) => {
   const channelId = req.query.channelId;
 
   try {
@@ -597,7 +597,7 @@ router.put("/devices/update-status", async (req, res) => {
 
     // Update the status value to false
     channel.status = false;
-
+    channel.timeout.time = null;
     // Save the updated device
     await device.save();
 
